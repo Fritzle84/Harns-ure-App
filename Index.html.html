@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Harnsäure" />
+  <meta name="theme-color" content="#0f1117" />
+  <title>Harnsäure Tracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-bottom: max(80px, calc(80px + env(safe-area-inset-bottom)));
+    }
+    input, textarea, button { font-family: Georgia, serif; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    /* Header */
+    #header {
+      background: linear-gradient(135deg, #1a1f2e 0%, #0f1117 100%);
+      border-bottom: 1px solid #1e293b;
+      padding: 16px 16px 12px;
+      padding-top: max(16px, calc(16px + env(safe-area-inset-top)));
+      position: sticky; top: 0; z-index: 10;
+      display: flex; align-items: center; gap: 10px;
+    }
+    #header .title { font-size: 18px; font-weight: bold; color: #f1f5f9; letter-spacing: 1px; }
+    #header .sub { font-size: 10px; color: #64748b; letter-spacing: 2px; text-transform: uppercase; }
+
+    /* Nav */
+    #nav {
+      display: flex;
+      border-bottom: 1px solid #1e293b;
+      background: #0f1117;
+      position: sticky; top: 64px; z-index: 9;
+    }
+    .nav-btn {
+      flex: 1; padding: 10px 8px;
+      background: none; border: none;
+      border-bottom: 2px solid transparent;
+      color: #64748b; font-size: 11px;
+      cursor: pointer; text-align: center;
+      transition: all 0.2s;
+    }
+    .nav-btn.active { border-bottom-color: #3b82f6; color: #3b82f6; }
+    .nav-btn .icon { font-size: 16px; display: block; margin-bottom: 2px; }
+
+    /* Content */
+    #content { padding: 16px; }
+
+    /* Views */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* Cards */
+    .card {
+      background: #1a1f2e;
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .card-label {
+      font-size: 10px; color: #64748b;
+      letter-spacing: 2px; text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    /* Dashboard */
+    #latest-card { text-align: center; }
+    #latest-value { font-size: 64px; font-weight: bold; line-height: 1; margin-bottom: 4px; }
+    #latest-unit { font-size: 13px; color: #94a3b8; margin-bottom: 6px; }
+    #latest-badge {
+      display: inline-block; border-radius: 20px;
+      padding: 3px 14px; font-size: 12px; font-weight: bold;
+      margin-bottom: 10px;
+    }
+    #latest-meta { font-size: 12px; color: #475569; }
+    #latest-food { font-size: 12px; color: #64748b; margin-top: 6px; }
+
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+    .stat-card { background: #1a1f2e; border: 1px solid #1e293b; border-radius: 12px; padding: 12px 8px; text-align: center; }
+    .stat-label { font-size: 9px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .stat-value { font-size: 20px; font-weight: bold; }
+    .stat-unit { font-size: 9px; color: #475569; }
+
+    /* Sparkline */
+    #sparkline-wrap { background: #1a1f2e; border: 1px solid #1e293b; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+    #sparkline-meta { display: flex; justify-content: space-between; font-size: 9px; color: #475569; margin-top: 4px; }
+    #sparkline-svg { width: 100%; height: 60px; }
+
+    /* Ref values */
+    .ref-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #0f1117; }
+    .ref-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+
+    /* Empty */
+    .empty { text-align: center; padding: 60px 20px; color: #475569; }
+    .empty .big { font-size: 48px; margin-bottom: 16px; }
+
+    /* Form */
+    #value-input {
+      background: #0f1117; border: 2px solid #1e293b; border-radius: 12px;
+      color: #e2e8f0; font-size: 40px; font-weight: bold;
+      text-align: center; padding: 14px 20px; width: 100%;
+      outline: none; transition: border-color 0.2s, color 0.2s;
+      font-family: Georgia, serif;
+    }
+    #value-label { margin-top: 8px; font-size: 13px; font-weight: bold; text-align: center; min-height: 20px; }
+
+    .datetime-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-input {
+      background: #0f1117; border: 1px solid #334155; border-radius: 8px;
+      color: #e2e8f0; font-size: 13px; padding: 9px; width: 100%;
+      font-family: Georgia, serif;
+    }
+    .form-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+
+    .toggle-btn {
+      padding: 10px; background: #0f1117;
+      border: 1px solid #334155; border-radius: 10px;
+      color: #64748b; font-size: 13px; cursor: pointer;
+      width: 100%; text-align: center; transition: all 0.2s;
+      font-family: Georgia, serif;
+    }
+    .toggle-btn.on { background: #1d4ed822; border-color: #3b82f6; color: #93c5fd; }
+
+    .activity-grid { display: flex; gap: 8px; }
+    .act-btn {
+      flex: 1; padding: 9px 4px; background: #0f1117;
+      border: 1px solid #334155; border-radius: 8px;
+      color: #64748b; font-size: 12px; cursor: pointer;
+      text-align: center; transition: all 0.2s;
+      font-family: Georgia, serif;
+    }
+    .act-btn.on { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
+
+    .chip-wrap { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+    .chip {
+      padding: 6px 11px; background: #0f1117;
+      border: 1px solid #334155; border-radius: 20px;
+      color: #64748b; font-size: 12px; cursor: pointer;
+      transition: all 0.15s; font-family: Georgia, serif;
+    }
+    .custom-row { display: flex; gap: 8px; }
+    .custom-input {
+      flex: 1; background: #0f1117; border: 1px solid #334155;
+      border-radius: 8px; color: #e2e8f0; font-size: 13px;
+      padding: 9px; font-family: Georgia, serif;
+    }
+    .add-btn {
+      background: #1e3a5f; border: 1px solid #3b82f6; border-radius: 8px;
+      color: #93c5fd; padding: 9px 14px; cursor: pointer; font-size: 16px;
+    }
+    .selected-hint { font-size: 11px; color: #64748b; margin-top: 8px; }
+
+    textarea.form-input { resize: none; }
+
+    #submit-btn {
+      width: 100%; padding: 16px; border: none; border-radius: 14px;
+      font-size: 16px; font-weight: bold; cursor: pointer;
+      letter-spacing: 1px; transition: all 0.2s; font-family: Georgia, serif;
+    }
+    #submit-btn.ready { background: #1d4ed8; color: #fff; }
+    #submit-btn.disabled { background: #1e293b; color: #475569; cursor: not-allowed; }
+
+    #saved-msg { text-align: center; padding: 60px 20px; }
+
+    /* History */
+    .hist-entry {
+      border-radius: 12px; padding: 14px; margin-bottom: 10px;
+      background: #1a1f2e;
+    }
+    .hist-top { display: flex; justify-content: space-between; align-items: flex-start; }
+    .hist-val { font-size: 28px; font-weight: bold; }
+    .hist-unit { font-size: 12px; color: #64748b; margin-left: 4px; }
+    .hist-badge { font-size: 11px; border-radius: 10px; padding: 2px 8px; margin-left: 6px; }
+    .hist-meta { font-size: 12px; color: #475569; margin-top: 2px; }
+    .hist-sub { font-size: 11px; color: #64748b; margin-top: 3px; }
+    .hist-note { font-size: 11px; color: #94a3b8; margin-top: 4px; font-style: italic; }
+    .del-btn { background: none; border: none; color: #334155; font-size: 20px; cursor: pointer; padding: 2px 8px; }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <span style="font-size:22px">🩸</span>
+  <div>
+    <div class="title">Harnsäure</div>
+    <div class="sub">Persönlicher Tracker</div>
+  </div>
+</div>
+
+<div id="nav">
+  <button class="nav-btn active" onclick="showView('dashboard')">
+    <span class="icon">📊</span>Übersicht
+  </button>
+  <button class="nav-btn" onclick="showView('add')" id="nav-add">
+    <span class="icon" style="font-size:20px">+</span>Messen
+  </button>
+  <button class="nav-btn" onclick="showView('history')">
+    <span class="icon">📋</span>Verlauf
+  </button>
+</div>
+
+<div id="content">
+
+  <!-- DASHBOARD -->
+  <div class="view active" id="view-dashboard">
+    <div id="dash-empty" class="empty" style="display:none">
+      <div class="big">🩸</div>
+      <div style="font-size:16px;margin-bottom:8px">Noch keine Messungen</div>
+      <div style="font-size:13px">Tippe auf „Messen" um zu starten</div>
+    </div>
+    <div id="dash-content">
+      <div class="card" id="latest-card">
+        <div class="card-label">Letzter Wert</div>
+        <div id="latest-value">–</div>
+        <div id="latest-unit">mg/dL</div>
+        <div id="latest-badge">–</div>
+        <div id="latest-meta"></div>
+        <div id="latest-food"></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Ø Schnitt</div>
+          <div class="stat-value" id="stat-avg">–</div>
+          <div class="stat-unit">mg/dL</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Bestes</div>
+          <div class="stat-value" id="stat-best" style="color:#4ade80">–</div>
+          <div class="stat-unit">mg/dL</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Höchstes</div>
+          <div class="stat-value" id="stat-worst" style="color:#f97316">–</div>
+          <div class="stat-unit">mg/dL</div>
+        </div>
+      </div>
+      <div id="sparkline-wrap" style="display:none">
+        <div class="card-label">Verlauf</div>
+        <svg id="sparkline-svg" viewBox="0 0 300 60" preserveAspectRatio="none"></svg>
+        <div id="sparkline-meta">
+          <span id="spark-from"></span>
+          <span style="color:#ef4444;font-size:9px">— 7.0 Grenzwert</span>
+          <span id="spark-to"></span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Referenzwerte</div>
+        <div class="ref-row">
+          <div><span class="ref-dot" style="background:#4ade80"></span><span style="font-size:13px">Optimal</span></div>
+          <span style="font-size:13px;color:#4ade80;font-weight:bold">&lt; 6,0 mg/dL</span>
+        </div>
+        <div class="ref-row">
+          <div><span class="ref-dot" style="background:#facc15"></span><span style="font-size:13px">Grenzwertig</span></div>
+          <span style="font-size:13px;color:#facc15;font-weight:bold">6,0 – 7,0 mg/dL</span>
+        </div>
+        <div class="ref-row">
+          <div><span class="ref-dot" style="background:#f97316"></span><span style="font-size:13px">Erhöht</span></div>
+          <span style="font-size:13px;color:#f97316;font-weight:bold">7,0 – 8,0 mg/dL</span>
+        </div>
+        <div class="ref-row" style="border:none">
+          <div><span class="ref-dot" style="background:#ef4444"></span><span style="font-size:13px">Kritisch</span></div>
+          <span style="font-size:13px;color:#ef4444;font-weight:bold">&gt; 8,0 mg/dL</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD -->
+  <div class="view" id="view-add">
+    <div id="saved-msg" style="display:none">
+      <div style="font-size:48px;margin-bottom:16px">✅</div>
+      <div style="font-size:18px;color:#4ade80">Gespeichert!</div>
+    </div>
+    <div id="add-form">
+      <!-- Value -->
+      <div class="card" style="text-align:center">
+        <div class="card-label">Messwert (mg/dL)</div>
+        <input type="number" id="value-input" step="0.1" min="3" max="20" placeholder="z.B. 7.3" oninput="onValueChange()" />
+        <div id="value-label"></div>
+      </div>
+      <!-- Date/Time -->
+      <div class="card">
+        <div class="datetime-grid">
+          <div>
+            <div class="form-label">Datum</div>
+            <input type="date" id="f-date" class="form-input" />
+          </div>
+          <div>
+            <div class="form-label">Uhrzeit</div>
+            <input type="time" id="f-time" class="form-input" />
+          </div>
+        </div>
+      </div>
+      <!-- Nüchtern + Aktivität -->
+      <div class="card">
+        <button class="toggle-btn" id="nuchtern-btn" onclick="toggleNuchtern()">🌅 Nüchtern gemessen</button>
+        <div class="form-label" style="margin-top:14px">Aktivität heute</div>
+        <div class="activity-grid">
+          <button class="act-btn" id="act-gering" onclick="setActivity('gering')">🧘 Gering</button>
+          <button class="act-btn on" id="act-normal" onclick="setActivity('normal')">🚶 Normal</button>
+          <button class="act-btn" id="act-intensiv" onclick="setActivity('intensiv')">🏃 Intensiv</button>
+        </div>
+      </div>
+      <!-- Food -->
+      <div class="card">
+        <div class="card-label">🍽 Gegessen (letzte ~8h)</div>
+        <div class="chip-wrap" id="food-chips"></div>
+        <div class="custom-row">
+          <input type="text" id="custom-food" class="custom-input" placeholder="Eigenes Essen..." />
+          <button class="add-btn" onclick="addCustomFood()">+</button>
+        </div>
+        <div class="selected-hint" id="food-hint"></div>
+      </div>
+      <!-- Drinks -->
+      <div class="card">
+        <div class="card-label">🥤 Getrunken (heute)</div>
+        <div class="chip-wrap" id="drink-chips"></div>
+        <div class="custom-row">
+          <input type="text" id="custom-drink" class="custom-input" placeholder="Eigenes Getränk..." />
+          <button class="add-btn" onclick="addCustomDrink()">+</button>
+        </div>
+        <div class="selected-hint" id="drink-hint"></div>
+      </div>
+      <!-- Note -->
+      <div class="card">
+        <div class="card-label">📝 Notiz</div>
+        <textarea id="f-note" class="form-input" rows="3" placeholder="z.B. nach dem Wandern, Gichtanfall-Vorgefühl..."></textarea>
+      </div>
+      <button id="submit-btn" class="disabled" onclick="submitEntry()">Messung speichern</button>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="view" id="view-history">
+    <div id="hist-empty" class="empty" style="display:none">
+      <div class="big">📋</div>
+      <div>Noch keine Messungen vorhanden</div>
+    </div>
+    <div id="hist-count" style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px"></div>
+    <div id="hist-list"></div>
+  </div>
+
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────
+const STORAGE_KEY = 'harnsaeure-v1';
+
+const FOODS = [
+  {name:'Linsen',purin:'mittel',e:'🫘'},{name:'Saitenwurst',purin:'hoch',e:'🌭'},
+  {name:'Spätzle',purin:'gering',e:'🍝'},{name:'Rind/Schwein',purin:'hoch',e:'🥩'},
+  {name:'Wild',purin:'hoch',e:'🦌'},{name:'Geflügel',purin:'mittel',e:'🍗'},
+  {name:'Fisch',purin:'hoch',e:'🐟'},{name:'Eier',purin:'gering',e:'🥚'},
+  {name:'Gemüse',purin:'gering',e:'🥦'},{name:'Kartoffeln',purin:'gering',e:'🥔'},
+  {name:'Brot',purin:'gering',e:'🍞'},{name:'Käse',purin:'gering',e:'🧀'},
+  {name:'Hülsenfrüchte',purin:'mittel',e:'🫘'},{name:'Innereien',purin:'sehr hoch',e:'⚠️'},
+];
+const DRINKS = [
+  {name:'Wasser',eff:'gut',e:'💧'},{name:'Kaffee',eff:'neutral',e:'☕'},
+  {name:'Bier',eff:'schlecht',e:'🍺'},{name:'Wein',eff:'schlecht',e:'🍷'},
+  {name:'Schnaps',eff:'schlecht',e:'🥃'},{name:'Fruchtsaft',eff:'schlecht',e:'🧃'},
+  {name:'Tee',eff:'gut',e:'🍵'},{name:'Milch',eff:'gut',e:'🥛'},
+  {name:'Cola/Limo',eff:'schlecht',e:'🥤'},
+];
+const PURIN_COL = {gering:'#4ade80',mittel:'#facc15',hoch:'#f97316','sehr hoch':'#ef4444'};
+const DRINK_COL = {gut:'#4ade80',neutral:'#94a3b8',schlecht:'#f97316'};
+
+function valColor(v) {
+  if(v<6) return '#4ade80';
+  if(v<7) return '#facc15';
+  if(v<8) return '#f97316';
+  return '#ef4444';
+}
+function valLabel(v) {
+  if(v<6) return 'Optimal';
+  if(v<7) return 'Grenzwertig';
+  if(v<8) return 'Erhöht';
+  return 'Kritisch';
+}
+function fmtDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function fmtTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ─── STATE ───────────────────────────────────────────────
+let entries = JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
+let selectedFoods = [];
+let selectedDrinks = [];
+let nuchtern = false;
+let activity = 'normal';
+
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); }
+
+// ─── VIEWS ───────────────────────────────────────────────
+let currentView = 'dashboard';
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  const idx = ['dashboard','add','history'].indexOf(id);
+  document.querySelectorAll('.nav-btn')[idx].classList.add('active');
+  currentView = id;
+  if(id==='dashboard') renderDashboard();
+  if(id==='add') initForm();
+  if(id==='history') renderHistory();
+}
+
+// ─── DASHBOARD ───────────────────────────────────────────
+function renderDashboard() {
+  const empty = document.getElementById('dash-empty');
+  const content = document.getElementById('dash-content');
+  if(entries.length===0) { empty.style.display='block'; content.style.display='none'; return; }
+  empty.style.display='none'; content.style.display='block';
+
+  const latest = entries[0];
+  const c = valColor(latest.value);
+  const lv = document.getElementById('latest-value');
+  lv.textContent = latest.value.toFixed(1);
+  lv.style.color = c;
+  document.getElementById('latest-card').style.borderColor = c+'33';
+  const badge = document.getElementById('latest-badge');
+  badge.textContent = valLabel(latest.value);
+  badge.style.background = c+'22'; badge.style.color = c;
+  document.getElementById('latest-meta').innerHTML =
+    fmtDate(latest.timestamp)+' · '+fmtTime(latest.timestamp)+
+    (latest.nuchtern?'<span style="color:#3b82f6;margin-left:6px">· Nüchtern</span>':'');
+  document.getElementById('latest-food').textContent =
+    latest.foods&&latest.foods.length ? '🍽 '+latest.foods.join(', ') : '';
+
+  const vals = entries.map(e=>e.value);
+  document.getElementById('stat-avg').textContent = (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
+  document.getElementById('stat-best').textContent = Math.min(...vals).toFixed(1);
+  document.getElementById('stat-worst').textContent = Math.max(...vals).toFixed(1);
+
+  // Sparkline
+  const spark = [...entries].reverse().slice(-12);
+  if(spark.length>1) {
+    document.getElementById('sparkline-wrap').style.display='block';
+    const W=300, H=60;
+    const sv = spark.map(e=>e.value);
+    const mn=Math.min(...sv,5), mx=Math.max(...sv,8), rng=mx-mn||1;
+    const toY = v=>55-((v-mn)/rng)*50;
+    const thY = toY(7.0);
+    const step = W/(spark.length-1);
+    const pts = spark.map((e,i)=>`${i*step},${toY(e.value)}`).join(' ');
+    const dots = spark.map((e,i)=>
+      `<circle cx="${i*step}" cy="${toY(e.value)}" r="4" fill="${valColor(e.value)}" stroke="#0f1117" stroke-width="1.5"/>`
+    ).join('');
+    document.getElementById('sparkline-svg').innerHTML =
+      `<line x1="0" y1="${thY}" x2="${W}" y2="${thY}" stroke="#ef444444" stroke-width="1" stroke-dasharray="4,4"/>
+       <polyline points="${pts}" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linejoin="round"/>
+       ${dots}`;
+    document.getElementById('spark-from').textContent = fmtDate(spark[0].timestamp);
+    document.getElementById('spark-to').textContent = fmtDate(spark[spark.length-1].timestamp);
+  } else {
+    document.getElementById('sparkline-wrap').style.display='none';
+  }
+}
+
+// ─── ADD FORM ────────────────────────────────────────────
+function initForm() {
+  selectedFoods=[]; selectedDrinks=[]; nuchtern=false; activity='normal';
+  document.getElementById('saved-msg').style.display='none';
+  document.getElementById('add-form').style.display='block';
+
+  const now = new Date();
+  document.getElementById('f-date').value = now.toISOString().slice(0,10);
+  document.getElementById('f-time').value = now.toTimeString().slice(0,5);
+  document.getElementById('value-input').value = '';
+  document.getElementById('value-label').textContent = '';
+  document.getElementById('value-input').style.borderColor = '#1e293b';
+  document.getElementById('value-input').style.color = '#e2e8f0';
+  document.getElementById('f-note').value = '';
+  document.getElementById('nuchtern-btn').classList.remove('on');
+  ['gering','normal','intensiv'].forEach(a=>{
+    document.getElementById('act-'+a).classList.toggle('on',a==='normal');
+  });
+  document.getElementById('submit-btn').className='disabled';
+  renderFoodChips(); renderDrinkChips();
+  updateHints();
+}
+
+function onValueChange() {
+  const v = parseFloat(document.getElementById('value-input').value);
+  const btn = document.getElementById('submit-btn');
+  if(!isNaN(v)&&v>=3&&v<=20) {
+    const c=valColor(v);
+    document.getElementById('value-input').style.borderColor=c;
+    document.getElementById('value-input').style.color=c;
+    document.getElementById('value-label').textContent=valLabel(v);
+    document.getElementById('value-label').style.color=c;
+    btn.className='ready';
+  } else {
+    document.getElementById('value-input').style.borderColor='#1e293b';
+    document.getElementById('value-input').style.color='#e2e8f0';
+    document.getElementById('value-label').textContent='';
+    btn.className='disabled';
+  }
+}
+
+function toggleNuchtern() {
+  nuchtern=!nuchtern;
+  document.getElementById('nuchtern-btn').classList.toggle('on',nuchtern);
+}
+function setActivity(a) {
+  activity=a;
+  ['gering','normal','intensiv'].forEach(x=>{
+    document.getElementById('act-'+x).classList.toggle('on',x===a);
+  });
+}
+
+function renderFoodChips() {
+  const wrap = document.getElementById('food-chips');
+  wrap.innerHTML = '';
+  FOODS.forEach(f=>{
+    const sel = selectedFoods.includes(f.name);
+    const c = PURIN_COL[f.purin];
+    const btn = document.createElement('button');
+    btn.className='chip';
+    btn.textContent=f.e+' '+f.name;
+    btn.style.background=sel?c+'22':'#0f1117';
+    btn.style.borderColor=sel?c:'#334155';
+    btn.style.color=sel?c:'#64748b';
+    btn.onclick=()=>{ toggleFood(f.name); };
+    wrap.appendChild(btn);
+  });
+}
+function toggleFood(name) {
+  if(selectedFoods.includes(name)) selectedFoods=selectedFoods.filter(x=>x!==name);
+  else selectedFoods.push(name);
+  renderFoodChips(); updateHints();
+}
+function addCustomFood() {
+  const inp=document.getElementById('custom-food');
+  if(inp.value.trim()){selectedFoods.push(inp.value.trim());inp.value='';updateHints();}
+}
+
+function renderDrinkChips() {
+  const wrap=document.getElementById('drink-chips');
+  wrap.innerHTML='';
+  DRINKS.forEach(d=>{
+    const sel=selectedDrinks.includes(d.name);
+    const c=DRINK_COL[d.eff];
+    const btn=document.createElement('button');
+    btn.className='chip';
+    btn.textContent=d.e+' '+d.name;
+    btn.style.background=sel?c+'22':'#0f1117';
+    btn.style.borderColor=sel?c:'#334155';
+    btn.style.color=sel?c:'#64748b';
+    btn.onclick=()=>{ toggleDrink(d.name); };
+    wrap.appendChild(btn);
+  });
+}
+function toggleDrink(name) {
+  if(selectedDrinks.includes(name)) selectedDrinks=selectedDrinks.filter(x=>x!==name);
+  else selectedDrinks.push(name);
+  renderDrinkChips(); updateHints();
+}
+function addCustomDrink() {
+  const inp=document.getElementById('custom-drink');
+  if(inp.value.trim()){selectedDrinks.push(inp.value.trim());inp.value='';updateHints();}
+}
+
+function updateHints() {
+  document.getElementById('food-hint').textContent=selectedFoods.length?'Ausgewählt: '+selectedFoods.join(', '):'';
+  document.getElementById('drink-hint').textContent=selectedDrinks.length?'Ausgewählt: '+selectedDrinks.join(', '):'';
+}
+
+document.getElementById('custom-food').addEventListener('keydown',e=>{if(e.key==='Enter')addCustomFood();});
+document.getElementById('custom-drink').addEventListener('keydown',e=>{if(e.key==='Enter')addCustomDrink();});
+
+function submitEntry() {
+  const v=parseFloat(document.getElementById('value-input').value);
+  if(isNaN(v)) return;
+  const date=document.getElementById('f-date').value;
+  const time=document.getElementById('f-time').value;
+  const entry={
+    id:Date.now(),value:v,
+    timestamp:new Date(date+'T'+time).toISOString(),
+    nuchtern,activity,
+    foods:[...selectedFoods],
+    drinks:[...selectedDrinks],
+    note:document.getElementById('f-note').value,
+  };
+  entries.unshift(entry);
+  save();
+  document.getElementById('add-form').style.display='none';
+  document.getElementById('saved-msg').style.display='block';
+  setTimeout(()=>showView('dashboard'),1200);
+}
+
+// ─── HISTORY ─────────────────────────────────────────────
+function renderHistory() {
+  const empty=document.getElementById('hist-empty');
+  const list=document.getElementById('hist-list');
+  const cnt=document.getElementById('hist-count');
+  list.innerHTML='';
+  if(entries.length===0){empty.style.display='block';cnt.textContent='';return;}
+  empty.style.display='none';
+  cnt.textContent=entries.length+' Messungen gesamt';
+  entries.forEach(e=>{
+    const c=valColor(e.value);
+    const div=document.createElement('div');
+    div.className='hist-entry';
+    div.style.borderColor=c+'33';
+    div.innerHTML=`
+      <div class="hist-top">
+        <div style="flex:1">
+          <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:3px">
+            <span class="hist-val" style="color:${c}">${e.value.toFixed(1)}</span>
+            <span class="hist-unit">mg/dL</span>
+            <span class="hist-badge" style="background:${c}22;color:${c}">${valLabel(e.value)}</span>
+          </div>
+          <div class="hist-meta">${fmtDate(e.timestamp)} · ${fmtTime(e.timestamp)}${e.nuchtern?'<span style="color:#3b82f6;margin-left:6px">· Nüchtern</span>':''}${e.activity&&e.activity!=='normal'?`<span style="color:#94a3b8;margin-left:6px">· ${e.activity==='gering'?'🧘 gering':'🏃 intensiv'}</span>`:''}</div>
+          ${e.foods&&e.foods.length?`<div class="hist-sub">🍽 ${e.foods.join(', ')}</div>`:''}
+          ${e.drinks&&e.drinks.length?`<div class="hist-sub">🥤 ${e.drinks.join(', ')}</div>`:''}
+          ${e.note?`<div class="hist-note">„${e.note}"</div>`:''}
+        </div>
+        <button class="del-btn" onclick="deleteEntry(${e.id})">×</button>
+      </div>`;
+    list.appendChild(div);
+  });
+}
+
+function deleteEntry(id) {
+  if(!confirm('Eintrag löschen?')) return;
+  entries=entries.filter(e=>e.id!==id);
+  save(); renderHistory();
+}
+
+// ─── INIT ────────────────────────────────────────────────
+renderDashboard();
+</script>
+</body>
+</html>
